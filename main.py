@@ -68,53 +68,45 @@ class Browser:
 
 def read_excel(filepath, columns=None):
     df = pd.read_excel(filepath, usecols=','.join(columns))
-    headers = [header for header in df]
-    data = {header: '' for header in headers}
-    results = []
-
-    for index, row in df.iterrows():
-        _data = data.copy()
-        for header in headers:
-            _data[header] = row[header]
-        results.append(_data)
-
-    return results
+    return df.to_dict()
 
 
 def get_json_countries(data):
     browser = Browser(executable_path="driver/chromedriver.exe", headless=True)
     countries = {}
-    # set country names only as keys
-    counter = 1
-    for row in sorted(data, key=lambda k: k['country']):
-        if row['country'] not in countries:
-            countries[row['country']] = {
-                'pk': counter,  # we use this id when creating city fixture
-                'fields': {
-                    'formal_name': browser.google_search_translate(row['country']),
-                    'international_formal_name': row['country'],
-                }
+
+    # remove duplicates by value but preserve at least one key (this will be a value for new list)
+    # then sort the result by new keys
+    for index, row in enumerate(sorted({value: key for key, value in data['country'].items()}.items()), start=1):
+        row_index = row[1]
+        country = row[0]
+        entry = {
+            'pk': index,  # we will use this id when creating city fixture
+            'fields': {
+                'formal_name': browser.google_search_translate(country),
+                'international_formal_name': country,
+                'iso2': data['iso2'][row_index],
+                'iso3': data['iso3'][row_index],
             }
-            counter += 1
+        }
+        countries[country] = entry
     return countries
 
 
 def get_json_cities(data, countries_json):
     cities = {}
     # set city names only as keys
-    for row in sorted(data, key=lambda k: str(k['admin_name'])):
-        if row['admin_name'] not in cities:
-            cities[row['admin_name']] = {
-                'fields': {
-                    'country': countries_json[row['country']]['pk'],
-                    'city': row['city'],
-                    'city_ascii': row['city_ascii'],
-                    'admin_name': row['admin_name'],
-                    'capital': True if row['capital'] == "primary" else False,
-                    'iso2': row['iso2'],
-                    'iso3': row['iso3'],
-                }
+    for row in sorted({str(value): key for key, value in data['admin_name'].items()}.items()):
+        row_index = row[1]
+        admin_name = row[0]
+        entry = {
+            'fields': {
+                'country': countries_json[data['country'][row_index]]['pk'],
+                'name': admin_name,
+                'capital': True if data['capital'][row_index] == "primary" else False,
             }
+        }
+        cities[data['admin_name'][row_index]] = entry
     return cities
 
 
@@ -138,10 +130,10 @@ def create_file(output_name, data):
 
 
 def main():
-    cities_data = read_excel('worldcities.xlsx', columns=['A', 'B', 'E', 'F', 'G', 'H', 'I'])
+    world_cities = read_excel('worldcities.xlsx', columns=['A', 'B', 'E', 'F', 'G', 'H', 'I'])
 
-    countries_json = get_json_countries(cities_data)
-    cities_json = get_json_cities(cities_data, countries_json)
+    countries_json = get_json_countries(world_cities)
+    cities_json = get_json_cities(world_cities, countries_json)
 
     country_fields_only = [value['fields'] for key, value in countries_json.items()]
     country_fixture = create_django_fixture('information', 'country', country_fields_only)
