@@ -14,7 +14,7 @@ class Browser:
     def __init__(self, executable_path, extensions=[], headless=False):
         options = chrome_options()
         options.add_argument("--start-maximized")
-        options.headless = True
+        options.headless = headless
         for extension in extensions:
             options.add_extension(extension)
         self.driver = webdriver.Chrome(executable_path=executable_path, options=options)
