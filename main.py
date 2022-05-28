@@ -8,11 +8,9 @@ import unidecode as unidecode
 
 class CountryCityFixture:
 
-    def __init__(self, excel_name, country_app_name, country_model_name, city_app_name, city_model_name, **kwargs):
+    def __init__(self, excel_name, country_model_name, city_model_name, **kwargs):
         self.data = pd.read_excel(excel_name, keep_default_na=False, **kwargs)
-        self.country_app_name = country_app_name
         self.country_model_name = country_model_name
-        self.city_app_name = city_app_name
         self.city_model_name = city_model_name
 
     @property
@@ -31,7 +29,7 @@ class CountryCityFixture:
             }
             countries.append(entry)
             seen.add(row['country'])
-        self.add_fixture_attributes(self.country_app_name, self.country_model_name, countries)
+        self.add_fixture_attributes(self.country_model_name, countries)
         return countries
 
     @property
@@ -52,14 +50,14 @@ class CountryCityFixture:
             }
             cities.append(entry)
             seen.add((name, country_id))
-        self.add_fixture_attributes(self.city_app_name, self.city_model_name, cities)
+        self.add_fixture_attributes(self.city_model_name, cities)
         return cities
 
     @staticmethod
-    def add_fixture_attributes(app, model, objects):
+    def add_fixture_attributes(model, objects):
         for index, obj in enumerate(objects, start=1):
             record = {
-                "model": f"{app}.{model}",
+                "model": model,
                 "pk": index,
             }
             obj.update(record)
@@ -81,7 +79,7 @@ def create_file(output_name, data):
 
 
 def main():
-    fixture = CountryCityFixture('worldcities.xlsx', 'adverts', 'country', 'adverts', 'city')
+    fixture = CountryCityFixture('worldcities.xlsx', 'adverts.country', 'adverts.city')
     create_file('fixtures/country.json', json.dumps(fixture.countries, ensure_ascii=False))
     create_file('fixtures/city.json', json.dumps(fixture.cities, ensure_ascii=False))
 
